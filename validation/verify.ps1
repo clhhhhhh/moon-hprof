@@ -31,14 +31,14 @@ try {
         if ($mode -eq 'uncompressed') { $vmArgs += @('-XX:-UseCompressedOops', '-XX:-UseCompressedClassPointers') }
         & $javaExe @vmArgs -cp _tools/reference-classes GenerateHeap $heapPath
         if ($LASTEXITCODE) { throw 'Heap generation failed' }
-        $actual = @(& moon run cmd/main --target wasm -- $heapPath)
+        $actual = @(& moon run cmd/main --target wasm -- $heapPath 'GenerateHeap$Marker')
         if ($LASTEXITCODE) { throw 'MoonBit parsing failed' }
         $expected = @(& $javaExe -cp $classPath ReferenceCounts $heapPath)
         if ($LASTEXITCODE) { throw 'Reference parsing failed' }
         if (($actual -join "`n") -ne ($expected -join "`n")) {
             throw "Parser mismatch: MoonBit=$actual Reference=$expected"
         }
-        if ($actual -notcontains 'markers=37') { throw 'Expected 37 known Marker instances' }
+        if ($actual -notcontains 'class_instances=37') { throw 'Expected 37 known Marker instances' }
         Write-Output "PASS $mode"
         $actual | Write-Output
         Get-FileHash $heapPath -Algorithm SHA256 | Select-Object Hash | Format-Table

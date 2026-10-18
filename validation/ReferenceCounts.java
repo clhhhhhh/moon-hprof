@@ -34,6 +34,6 @@ public final class ReferenceCounts extends NullRecordHandler {
         System.out.println("instances=" + h.instances);
         System.out.println("object_arrays=" + h.objectArrays);
         System.out.println("primitive_arrays=" + h.primitiveArrays);
-        System.out.println("markers=" + markers);
+        System.out.println("class_instances=" + markers);
     }
 }
