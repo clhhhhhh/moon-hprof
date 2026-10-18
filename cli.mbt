@@ -11,6 +11,10 @@ pub fn cli_help() -> String {
   "  roots:     [--offset N] [--limit N]\n" +
   "  stack:     <trace-serial>\n" +
   "  refs:      <object-id> [--limit N]\n" +
+  "  inbound:   <object-id> [--offset N] [--limit N]\n" +
+  "  referenced: [--limit N] (rank direct reference targets)\n" +
+  "  preview:   <object-id> [--limit preview-items]\n" +
+  "  export:    <class-id-or-0> [--offset N] [--limit N] (JSON Lines)\n" +
   "  check:     validate class layouts and metadata\n" +
   "JSON IDs and 64-bit integers are decimal strings; payload sizes are file bytes."
 }
@@ -75,13 +79,13 @@ fn parse_cli(args : Array[String]) -> CliOptions raise ParseError {
   let command = args[0]
   if ![
       "summary", "histogram", "objects", "object", "class", "roots", "stack", "refs",
-      "check",
+      "check", "inbound", "preview", "export", "referenced",
     ].contains(command) {
     raise Invalid(0, "unknown command: \{command}")
   }
-  let needs_id = ["objects", "object", "class", "stack", "refs"].contains(
-    command,
-  )
+  let needs_id = [
+    "objects", "object", "class", "stack", "refs", "inbound", "preview", "export",
+  ].contains(command)
   let id = if needs_id {
     if args.length() < 2 {
       raise Invalid(0, "missing object ID or trace serial")
@@ -123,12 +127,13 @@ fn parse_cli(args : Array[String]) -> CliOptions raise ParseError {
           "name" => Name
           _ => raise Invalid(i, "invalid histogram sort")
         }
-      "--offset" if ["histogram", "objects", "object", "roots"].contains(
-          command,
-        ) => offset = cli_int(value)
-      "--limit" if ["histogram", "objects", "object", "roots", "refs"].contains(
-          command,
-        ) => limit = cli_int(value)
+      "--offset" if [
+          "histogram", "objects", "object", "roots", "inbound", "export",
+        ].contains(command) => offset = cli_int(value)
+      "--limit" if [
+          "histogram", "objects", "object", "roots", "refs", "inbound", "preview",
+          "export", "referenced",
+        ].contains(command) => limit = cli_int(value)
       _ => raise Invalid(i, "option not supported for command: \{option}")
     }
     i += 2
@@ -238,6 +243,28 @@ pub fn execute(
         .references(options.id, limit=options.limit)
         .map(edge => edge.to_json()),
       ).stringify()
+    "inbound" => {
+      let index = ReferenceIndex::build(heap)
+      Json::array(
+        index
+        .incoming(options.id, offset=options.offset, limit=options.limit)
+        .map(edge => edge.to_json()),
+      ).stringify()
+    }
+    "referenced" => {
+      let index = ReferenceIndex::build(heap)
+      Json::array(
+        index.most_referenced(limit=options.limit).map(row => row.to_json()),
+      ).stringify()
+    }
+    "preview" =>
+      heap.preview(options.id, max_items=options.limit).to_json().stringify()
+    "export" =>
+      heap.objects_jsonl(
+        class_id=options.id,
+        offset=options.offset,
+        limit=options.limit,
+      )
     "check" => {
       heap.validate()
       "OK"

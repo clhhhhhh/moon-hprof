@@ -142,6 +142,17 @@ pub fn ObjectKind::equal(Self, Self) -> Bool
 pub fn ObjectKind::label(Self) -> String
 pub fn ObjectKind::not_equal(Self, Self) -> Bool
 
+pub struct ObjectPreview {
+  id : UInt64
+  kind : String
+  class_name : String
+  payload_bytes : Int
+  array_length : Int?
+  text : String
+  truncated : Bool
+}
+pub fn ObjectPreview::to_json(Self) -> Json
+
 pub struct ParseLimits {
   max_file_bytes : Int
   max_objects : Int
@@ -161,6 +172,35 @@ pub struct ReferenceEdge {
   label : String
 }
 pub fn ReferenceEdge::to_json(Self) -> Json
+
+pub struct ReferenceIndex {
+  // private fields
+}
+pub fn ReferenceIndex::build(Summary, max_edges? : Int, max_slots? : Int) -> Self raise ParseError
+pub fn ReferenceIndex::edge_count(Self) -> Int
+pub fn ReferenceIndex::incoming(Self, UInt64, offset? : Int, limit? : Int) -> Array[ReferenceEdge] raise ParseError
+pub fn ReferenceIndex::most_referenced(Self, limit? : Int) -> Array[ReferencedObject] raise ParseError
+pub fn ReferenceIndex::outgoing(Self, UInt64, offset? : Int, limit? : Int) -> Array[ReferenceEdge] raise ParseError
+pub fn ReferenceIndex::path(Self, UInt64, UInt64, max_depth? : Int, max_nodes? : Int, max_edges? : Int) -> ReferencePath raise ParseError
+pub fn ReferenceIndex::referrer_ids(Self, UInt64, offset? : Int, limit? : Int) -> Array[UInt64] raise ParseError
+pub fn ReferenceIndex::slot_count(Self) -> Int
+
+pub struct ReferencePath {
+  found : Bool
+  truncated : Bool
+  visited_nodes : Int
+  inspected_edges : Int
+  edges : Array[ReferenceEdge]
+}
+pub fn ReferencePath::to_json(Self) -> Json
+
+pub struct ReferencedObject {
+  object_id : UInt64
+  reference_count : Int
+  source_count : Int
+  present_in_heap : Bool
+}
+pub fn ReferencedObject::to_json(Self) -> Json
 
 pub struct ResolvedFrame {
   id : UInt64
@@ -235,7 +275,10 @@ pub fn Summary::object(Self, UInt64) -> ObjectInfo?
 pub fn Summary::object_count(Self) -> Int
 pub fn Summary::object_ids(Self, class_id? : UInt64, offset? : Int, limit? : Int) -> Array[UInt64] raise ParseError
 pub fn Summary::object_json(Self, UInt64, offset? : Int, limit? : Int) -> Json raise ParseError
+pub fn Summary::objects_jsonl(Self, class_id? : UInt64, offset? : Int, limit? : Int, array_limit? : Int) -> String raise ParseError
 pub fn Summary::payload(Self, UInt64, offset? : Int, limit? : Int) -> Bytes raise ParseError
+pub fn Summary::preview(Self, UInt64, max_items? : Int, max_chars? : Int) -> ObjectPreview raise ParseError
+pub fn Summary::previews_jsonl(Self, class_id? : UInt64, offset? : Int, limit? : Int, max_items? : Int, max_chars? : Int) -> String raise ParseError
 pub fn Summary::record_count(Self, Int) -> Int
 pub fn Summary::references(Self, UInt64, limit? : Int) -> Array[ReferenceEdge] raise ParseError
 pub fn Summary::root_count(Self) -> Int
@@ -274,6 +317,7 @@ pub enum Value {
   FloatValue(Double)
   DoubleValue(Double)
 } derive(@debug.Debug)
+pub fn Value::display(Self) -> String
 pub fn Value::kind(Self) -> Int
 pub fn Value::reference(Self) -> UInt64?
 pub fn Value::to_json(Self) -> Json
