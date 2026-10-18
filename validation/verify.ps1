@@ -39,6 +39,8 @@ try {
             throw "Parser mismatch: MoonBit=$actual Reference=$expected"
         }
         if ($actual -notcontains 'class_instances=37') { throw 'Expected 37 known Marker instances' }
+        & moon run cmd/verify --target wasm -- $heapPath
+        if ($LASTEXITCODE) { throw 'MoonBit field/array semantic validation failed' }
         Write-Output "PASS $mode"
         $actual | Write-Output
         Get-FileHash $heapPath -Algorithm SHA256 | Select-Object Hash | Format-Table
