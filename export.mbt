@@ -5,12 +5,17 @@ fn json_id(id : UInt64) -> Json {
 }
 
 ///|
+fn json_int(value : Int) -> Json {
+  Json::number(value.to_double())
+}
+
+///|
 pub fn Value::to_json(self : Value) -> Json {
   let value = match self {
     Reference(id) => json_id(id)
     Boolean(value) => Json::boolean(value)
     Character(value) | ByteValue(value) | ShortValue(value) | IntValue(value) =>
-      value.to_json()
+      json_int(value)
     LongValue(value) => Json::string(value.to_string())
     FloatValue(value) | DoubleValue(value) =>
       // NaN/Infinity have no JSON numeric representation.
@@ -34,16 +39,16 @@ pub fn Value::to_json(self : Value) -> Json {
 pub fn Summary::summary_json(self : Summary) -> Json {
   Json::object({
     "format": Json::string("JAVA PROFILE 1.0.2"),
-    "id_size": self.id_size.to_json(),
+    "id_size": json_int(self.id_size),
     "timestamp_ms": json_id(self.timestamp_ms),
-    "file_bytes": self.file_size().to_json(),
-    "classes": self.classes.to_json(),
-    "instances": self.instances.to_json(),
-    "object_arrays": self.object_arrays.to_json(),
-    "primitive_arrays": self.primitive_arrays.to_json(),
-    "roots": self.root_count().to_json(),
-    "stack_frames": self.frames.length().to_json(),
-    "stack_traces": self.traces.length().to_json(),
+    "file_bytes": json_int(self.file_size()),
+    "classes": json_int(self.classes),
+    "instances": json_int(self.instances),
+    "object_arrays": json_int(self.object_arrays),
+    "primitive_arrays": json_int(self.primitive_arrays),
+    "roots": json_int(self.root_count()),
+    "stack_frames": json_int(self.frames.length()),
+    "stack_traces": json_int(self.traces.length()),
   })
 }
 
@@ -55,7 +60,7 @@ pub fn HistogramRow::to_json(self : HistogramRow) -> Json {
     "class_id": json_id(self.class_id),
     "loader_id": json_id(self.loader_id),
     "kind": Json::string(self.kind),
-    "count": self.count.to_json(),
+    "count": json_int(self.count),
     "payload_bytes": Json::string(self.payload_bytes.to_string()),
     "elements": Json::string(self.elements.to_string()),
   })
@@ -114,7 +119,7 @@ pub fn Summary::class_json(
   })
   let constants = cls.constants.map(entry => {
     Json::object({
-      "index": entry.index.to_json(),
+      "index": json_int(entry.index),
       "value": entry.value.to_json(),
     })
   })
@@ -125,7 +130,7 @@ pub fn Summary::class_json(
     "loader_id": json_id(cls.loader_id),
     "signers_id": json_id(cls.signers_id),
     "protection_domain_id": json_id(cls.protection_domain_id),
-    "reported_instance_size": cls.instance_size.to_json(),
+    "reported_instance_size": json_int(cls.instance_size),
     "fields": Json::array(fields),
     "statics": Json::array(self.static_fields(id).map(field_json)),
     "constants": Json::array(constants),
@@ -149,8 +154,8 @@ pub fn Summary::object_json(
     "kind": Json::string(object.kind.label()),
     "class_id": json_id(object.class_id),
     "stack_serial": json_id(object.stack_serial),
-    "payload_bytes": object.payload_bytes.to_json(),
-    "payload_offset": object.payload_offset.to_json(),
+    "payload_bytes": json_int(object.payload_bytes),
+    "payload_offset": json_int(object.payload_offset),
   }
   match object.kind {
     Instance => {
@@ -160,8 +165,8 @@ pub fn Summary::object_json(
       fields["fields"] = Json::array(self.instance_fields(id).map(field_json))
     }
     ObjectArray | PrimitiveArray => {
-      fields["length"] = object.length.to_json()
-      fields["offset"] = offset.to_json()
+      fields["length"] = json_int(object.length)
+      fields["offset"] = json_int(offset)
       fields["values"] = Json::array(
         self.array_values(id, offset~, limit~).map(value => value.to_json()),
       )
@@ -203,6 +208,6 @@ pub fn ResolvedFrame::to_json(self : ResolvedFrame) -> Json {
     "method_name": Json::string(self.method_name),
     "signature": Json::string(self.signature),
     "source_name": Json::string(self.source_name),
-    "line_number": self.line_number.to_json(),
+    "line_number": json_int(self.line_number),
   })
 }

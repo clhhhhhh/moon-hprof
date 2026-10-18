@@ -159,9 +159,9 @@ pub fn execute(
         match json {
           Object(fields) =>
             if options.name != "" {
-              fields["class_instances"] = heap
-                .count_class(options.name)
-                .to_json()
+              fields["class_instances"] = json_int(
+                heap.count_class(options.name),
+              )
             }
           _ => ()
         }

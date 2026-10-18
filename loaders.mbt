@@ -47,9 +47,9 @@ pub fn Summary::loader_statistics(self : Summary) -> Array[LoaderStatistics] {
 pub fn LoaderStatistics::to_json(self : LoaderStatistics) -> Json {
   Json::object({
     "loader_id": json_id(self.loader_id),
-    "classes": self.class_count.to_json(),
-    "instances": self.instance_count.to_json(),
-    "arrays": self.array_count.to_json(),
+    "classes": json_int(self.class_count),
+    "instances": json_int(self.instance_count),
+    "arrays": json_int(self.array_count),
     "payload_bytes": Json::string(self.payload_bytes.to_string()),
   })
 }

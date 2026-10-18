@@ -147,8 +147,8 @@ pub fn HistogramDelta::to_json(self : HistogramDelta) -> Json {
   Json::object({
     "name": Json::string(self.name),
     "kind": Json::string(self.kind),
-    "before_count": self.before_count.to_json(),
-    "after_count": self.after_count.to_json(),
+    "before_count": json_int(self.before_count),
+    "after_count": json_int(self.after_count),
     "count_delta": Json::string(self.count_delta.to_string()),
     "payload_delta": Json::string(self.payload_delta.to_string()),
   })
