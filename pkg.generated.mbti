@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "clhhhhhh/moon-hprof"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn parse(Bytes) -> Summary raise ParseError
+
+// Errors
+pub suberror ParseError {
+  Invalid(Int, String)
+} derive(@debug.Debug)
+pub fn ParseError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub struct Summary {
+  id_size : Int
+  mut classes : Int
+  mut instances : Int
+  mut object_arrays : Int
+  mut primitive_arrays : Int
+  // private fields
+} derive(@debug.Debug)
+pub fn Summary::count_class(Self, String) -> Int
+pub fn Summary::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

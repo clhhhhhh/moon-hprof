@@ -1,5 +1,8 @@
-// import {
-//   "clhhhhhh/moon-hprof" @lib,
-// }
+import {
+  "clhhhhhh/moon-hprof" @lib,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/core/env",
+}
 
 pkgtype(kind: "executable")

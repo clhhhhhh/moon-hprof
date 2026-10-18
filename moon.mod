@@ -24,3 +24,7 @@ keywords = [ "hprof", "jvm", "heap-dump" ]
 preferred_target = "wasm"
 
 description = "Experimental HPROF heap dump parser for MoonBit."
+
+import {
+  "moonbitlang/async@0.22.1",
+}
