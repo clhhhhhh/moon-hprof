@@ -37,6 +37,8 @@ moon run cmd/main --target wasm -- check path/to/heap.hprof
 | Java String | `java_string`，支持 char[]、Latin-1、compact UTF-16，字节顺序由调用者明确指定 |
 | 根引用与栈 | `roots`、`roots_for`、`stack_trace`、`roots` / `stack` 命令 |
 | 直接引用 | `references` / `refs`，返回字段或数组引用，不进行可达性或泄漏推断 |
+| 反向引用与路径 | `ReferenceIndex`、`incoming`、`referrer_ids`、`most_referenced`、有预算的 `path`；CLI `inbound` / `referenced` |
+| 内容预览与批量导出 | `preview`、`objects_jsonl`、`previews_jsonl`；CLI `preview` / `export` |
 | 统计与比较 | `histogram`、`select_histogram`、`totals`、`largest_objects`、`loader_statistics`、`compare_heaps` |
 | 导出 | JSON、RFC 4180 CSV；`diff` 比较两份转储 |
 | 校验 | `validate` / `check`，检查继承链、字段布局和元数据引用 |
@@ -50,6 +52,9 @@ moon run cmd/main --target wasm -- summary heap.hprof --class java/lang/String
 moon run cmd/main --target wasm -- histogram heap.hprof --prefix java/ --sort payload --format json
 moon run cmd/main --target wasm -- object heap.hprof 0x1234 --offset 0 --limit 20
 moon run cmd/main --target wasm -- diff before.hprof after.hprof
+moon run cmd/main --target wasm -- inbound heap.hprof 0x1234 --limit 20
+moon run cmd/main --target wasm -- preview heap.hprof 0x1234 --limit 8
+moon run cmd/main --target wasm -- export heap.hprof 0 --limit 100 > objects.jsonl
 ```
 
 其中 `0x1234` 是占位 ID，请替换成文件中的实际 ID。`--offset`、`--limit` 支持数组页面、根列表和对象列表，具体参数见 `--help`。
@@ -64,6 +69,9 @@ moon run cmd/main --target wasm -- diff before.hprof after.hprof
 - `java_string` 对 compact UTF-16 必须明确原 JVM 的本机字节顺序。HPROF 没有直接携带这一信息。它解码字符串内容，不推断业务语义。
 - 输入完整加载到内存，再保存对象偏移和元数据索引；没有 mmap 或流式文件读取。默认文件上限 512 MiB、普通对象/数组上限 200 万、类上限 20 万，可通过 `ParseLimits` 调整；CLI 使用默认值。文件上限在读取后检查，不能替代调用者读取前的大小检查。
 - 查询页最多 100000 项；导出单个对象不会展开整个引用图。当前验证目标是 Windows/JDK 24 与 Ubuntu/JDK 21 的小型真实样本，不承诺大型转储性能或任意 JVM 兼容性。
+- `ReferenceIndex` 只索引实例字段、静态字段和对象数组，不包括 VM 隐式引用、类加载器元数据边，也不区分弱/软引用。路径只表示这些已记录边的连接，不是 GC 根路径、保留大小或泄漏证据。路径预算耗尽时 `truncated=true`，不会冒充“确定不存在路径”。
+- 反向索引默认最多 100 万非空边、1000 万引用槽（包括空槽），超限明确报错。引用目标排行区分边数与不同源对象数，并标识指向堆中未定义对象的引用。
+- 对象预览只展示一层，省略项和字符裁剪会标记 `truncated`。JSON Lines 导出按对象分页，每行一个 JSON 文档；数组元素另有上限，不递归展开引用。
 
 ## 真实 JVM 对照验证
 
@@ -81,9 +89,9 @@ moon run cmd/main --target wasm -- diff before.hprof after.hprof
 
 ## 当前验证边界
 
-78 个单元测试覆盖二进制边界、完整合成文件的所有截断前缀、重复/空 ID、数值位模式、类型解码、继承循环、字段遮蔽、数组、元数据、资源上限、类加载器统计、Unicode、JSON/CSV、查询、CLI 和描述符。真实文件对照另在 CI 执行，不计入这个单元测试数量。
+86 个单元测试覆盖二进制边界、完整合成文件的所有截断前缀、重复/空 ID、数值位模式、类型解码、继承循环、字段遮蔽、数组、元数据、资源上限、类加载器统计、Unicode、JSON/CSV/JSON Lines、正反向引用、循环路径与预算截断、对象预览、CLI 和描述符。真实文件对照另在 CI 执行，不计入这个单元测试数量。
 
-2026-10-18 的 Git 跟踪 `.mbt` 文件合计 4017 行：实现和可执行程序 2467 行，测试 1550 行。该统计包含注释及空行，不包含生成的 `.mbti` 接口文件、Java 验证代码或第三方源码；行数不代表生产成熟度。
+2026-10-18 的 Git 跟踪 `.mbt` 文件合计 4735 行：实现和可执行程序 3025 行，测试 1710 行。该统计包含注释及空行，不包含生成的 `.mbti` 接口文件、Java 验证代码或第三方源码；行数不代表生产成熟度。
 
 GitHub Actions 执行 WASM 目标的 check/build/test，然后在 Linux/JDK 21 上重新生成样本并运行独立对照与语义验证。工具链版本、输入来源、参考解析器版本和边界均可在仓库内追溯。
 
@@ -92,6 +100,7 @@ GitHub Actions 执行 WASM 目标的 check/build/test，然后在 Linux/JDK 21 �
 - `parser.mbt` / `model.mbt`：边界读取、记录解析和数据模型。
 - `query.mbt` / `validate.mbt`：索引查询、类型与结构校验。
 - `export.mbt` / `report.mbt`：导出、过滤排序、统计与比较。
+- `references.mbt` / `reference_report.mbt` / `preview.mbt`：反向索引、有预算的路径查询、引用排行、对象预览和 JSON Lines。
 - `text.mbt` / `strings.mbt` / `descriptor.mbt`：Unicode、Java String 和 JVM 描述符。
 - `limits.mbt` / `cli.mbt`：资源限制和命令渲染。
 - `cmd/main`：CLI；`cmd/verify`：真实样本语义断言；`validation`：生成和独立对照。

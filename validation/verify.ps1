@@ -41,6 +41,12 @@ try {
         if ($actual -notcontains 'class_instances=37') { throw 'Expected 37 known Marker instances' }
         & moon run cmd/verify --target wasm -- $heapPath
         if ($LASTEXITCODE) { throw 'MoonBit field/array semantic validation failed' }
+        $exported = @(& moon run cmd/main --target wasm -- export $heapPath 0 --limit 2)
+        if ($LASTEXITCODE -or $exported.Count -ne 2) { throw 'JSON Lines CLI emitted incorrect record count' }
+        foreach ($line in $exported) {
+            if ([string]::IsNullOrWhiteSpace($line)) { throw 'JSON Lines CLI emitted a blank record' }
+            $line | ConvertFrom-Json | Out-Null
+        }
         Write-Output "PASS $mode"
         $actual | Write-Output
         Get-FileHash $heapPath -Algorithm SHA256 | Select-Object Hash | Format-Table

@@ -95,6 +95,14 @@ fn main {
       rows.fold(init=0L, (sum, row) => sum + row.payload_bytes),
     )
     assert_true(heap.references(keep, limit=100).length() == 37)
+    let index = @lib.ReferenceIndex::build(heap)
+    assert_true(index.referrer_ids(ids[0]).contains(keep))
+    let path = index.path(keep, ids[0])
+    assert_true(path.found && !path.truncated)
+    assert_eq(path.edges.length(), 1)
+    let preview = heap.preview(ids[0])
+    assert_eq(preview.class_name, "GenerateHeap$Marker")
+    assert_true(preview.text.contains("sequence="))
     println("semantic_validation=OK")
   })
 }

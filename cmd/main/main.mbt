@@ -30,7 +30,15 @@ fn main {
       for i in 3..<args.length() {
         command_args.push(args[i])
       }
-      println(@lib.execute(heap, command_args))
+      let output = @lib.execute(heap, command_args)
+      if args[1] == "export" {
+        // JSON Lines already has a terminal newline; do not add a blank record.
+        if output.strip_suffix("\n") is Some(body) {
+          println(body)
+        }
+      } else {
+        println(output)
+      }
     } else {
       // Compatibility with the original feasibility command and reference script.
       if args.length() != 2 && args.length() != 3 {
