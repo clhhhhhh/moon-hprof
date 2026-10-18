@@ -6,6 +6,10 @@ import {
 }
 
 // Values
+pub fn cli_help() -> String
+
+pub fn compare_heaps(Summary, Summary) -> Array[HistogramDelta] raise ParseError
+
 pub fn csv_cell(String) -> String
 
 pub fn decode_hprof_text(Bytes) -> String raise ParseError
@@ -14,7 +18,13 @@ pub fn display_class_name(String) -> String
 
 pub fn encode_hprof_text(String) -> Bytes
 
-pub fn parse(Bytes) -> Summary raise ParseError
+pub fn execute(Summary, Array[String]) -> String raise ParseError
+
+pub fn parse(Bytes, limits? : ParseLimits) -> Summary raise ParseError
+
+pub fn parse_object_id(String) -> UInt64 raise ParseError
+
+pub fn parse_with_limits(Bytes, ParseLimits) -> Summary raise ParseError
 
 pub fn value_type_name(Int) -> String raise ParseError
 
@@ -54,6 +64,26 @@ pub struct FieldValue {
   value : Value
 }
 
+pub struct HeapTotals {
+  class_objects : Int
+  instance_objects : Int
+  array_objects : Int
+  payload_bytes : Int64
+  array_elements : Int64
+  largest_payload_id : UInt64
+  largest_payload_bytes : Int
+}
+
+pub struct HistogramDelta {
+  name : String
+  kind : String
+  before_count : Int
+  after_count : Int
+  count_delta : Int64
+  payload_delta : Int64
+}
+pub fn HistogramDelta::to_json(Self) -> Json
+
 pub struct HistogramRow {
   name : String
   class_id : UInt64
@@ -64,6 +94,13 @@ pub struct HistogramRow {
   elements : Int64
 }
 pub fn HistogramRow::to_json(Self) -> Json
+
+pub enum HistogramSort {
+  Count
+  Payload
+  Elements
+  Name
+}
 
 pub struct ObjectInfo {
   id : UInt64
@@ -84,6 +121,19 @@ pub enum ObjectKind {
 pub fn ObjectKind::equal(Self, Self) -> Bool
 pub fn ObjectKind::label(Self) -> String
 pub fn ObjectKind::not_equal(Self, Self) -> Bool
+
+pub struct ParseLimits {
+  max_file_bytes : Int
+  max_objects : Int
+  max_classes : Int
+  max_strings : Int
+  max_text_bytes : Int
+  max_roots : Int
+  max_records : Int
+  max_trace_frames : Int
+}
+pub fn ParseLimits::new(max_file_bytes? : Int, max_objects? : Int, max_classes? : Int, max_strings? : Int, max_text_bytes? : Int, max_roots? : Int, max_records? : Int, max_trace_frames? : Int) -> Self raise ParseError
+pub fn ParseLimits::validate(Self) -> Unit raise ParseError
 
 pub struct ReferenceEdge {
   source_id : UInt64
@@ -148,6 +198,7 @@ pub fn Summary::class_json(Self, UInt64) -> Json raise ParseError
 pub fn Summary::class_name(Self, UInt64) -> String?
 pub fn Summary::contains_object(Self, UInt64) -> Bool
 pub fn Summary::count_class(Self, String) -> Int
+pub fn Summary::field(Self, UInt64, String, declaring_class? : UInt64) -> Value? raise ParseError
 pub fn Summary::file_size(Self) -> Int
 pub fn Summary::find_classes(Self, String) -> Array[UInt64]
 pub fn Summary::hierarchy(Self, UInt64) -> Array[ClassInfo] raise ParseError
@@ -155,20 +206,30 @@ pub fn Summary::histogram(Self) -> Array[HistogramRow] raise ParseError
 pub fn Summary::histogram_csv(Self) -> String raise ParseError
 pub fn Summary::histogram_json(Self) -> Json raise ParseError
 pub fn Summary::instance_fields(Self, UInt64) -> Array[FieldValue] raise ParseError
+pub fn Summary::instance_payload_size(Self, UInt64) -> Int raise ParseError
+pub fn Summary::largest_objects(Self, limit? : Int) -> Array[ObjectInfo] raise ParseError
 pub fn Summary::object(Self, UInt64) -> ObjectInfo?
 pub fn Summary::object_count(Self) -> Int
 pub fn Summary::object_ids(Self, class_id? : UInt64, offset? : Int, limit? : Int) -> Array[UInt64] raise ParseError
 pub fn Summary::object_json(Self, UInt64, offset? : Int, limit? : Int) -> Json raise ParseError
+pub fn Summary::payload(Self, UInt64, offset? : Int, limit? : Int) -> Bytes raise ParseError
 pub fn Summary::record_count(Self, Int) -> Int
 pub fn Summary::references(Self, UInt64, limit? : Int) -> Array[ReferenceEdge] raise ParseError
 pub fn Summary::root_count(Self) -> Int
+pub fn Summary::root_kinds(Self) -> Map[String, Int]
 pub fn Summary::roots(Self, offset? : Int, limit? : Int) -> Array[RootInfo] raise ParseError
+pub fn Summary::roots_for(Self, UInt64) -> Array[RootInfo]
+pub fn Summary::select_histogram(Self, prefix? : String, kind? : String, sort? : HistogramSort, offset? : Int, limit? : Int) -> Array[HistogramRow] raise ParseError
 pub fn Summary::stack_frame(Self, UInt64) -> ResolvedFrame?
 pub fn Summary::stack_trace(Self, UInt64) -> Array[ResolvedFrame] raise ParseError
 pub fn Summary::static_fields(Self, UInt64) -> Array[FieldValue] raise ParseError
 pub fn Summary::string(Self, UInt64) -> String?
 pub fn Summary::summary_json(Self) -> Json
 pub fn Summary::thread(Self, UInt64) -> ThreadInfo?
+pub fn Summary::thread_serials(Self) -> Array[UInt64]
+pub fn Summary::totals(Self) -> HeapTotals
+pub fn Summary::trace_serials(Self) -> Array[UInt64]
+pub fn Summary::validate(Self) -> Unit raise ParseError
 
 pub struct ThreadInfo {
   serial : UInt64

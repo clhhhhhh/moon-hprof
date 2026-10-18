@@ -90,6 +90,7 @@ pub struct Summary {
   priv threads : Map[UInt64, ThreadInfo]
   priv class_serials : Map[UInt64, UInt64]
   priv record_counts : Map[Int, Int]
+  priv limits : ParseLimits
 }
 
 ///|
@@ -105,6 +106,12 @@ pub fn Summary::count_class(self : Summary, name : String) -> Int {
 
 ///|
 fn read_class(r : Reader, summary : Summary) -> Unit raise ParseError {
+  check_limit(
+    r.pos,
+    "classes",
+    summary.definitions.length(),
+    summary.limits.max_classes,
+  )
   let id = r.id()
   if id == 0UL ||
     summary.definitions.contains(id) ||
@@ -156,6 +163,12 @@ fn read_class(r : Reader, summary : Summary) -> Unit raise ParseError {
 
 ///|
 fn add_object(summary : Summary, object : ObjectInfo) -> Unit raise ParseError {
+  check_limit(
+    object.payload_offset,
+    "objects",
+    summary.objects.length(),
+    summary.limits.max_objects,
+  )
   if object.id == 0UL ||
     summary.objects.contains(object.id) ||
     summary.definitions.contains(object.id) {
@@ -166,6 +179,12 @@ fn add_object(summary : Summary, object : ObjectInfo) -> Unit raise ParseError {
 
 ///|
 fn read_root(r : Reader, tag : Int, summary : Summary) -> Unit raise ParseError {
+  check_limit(
+    r.pos,
+    "roots",
+    summary.roots_data.length(),
+    summary.limits.max_roots,
+  )
   let object_id = r.id()
   let related_id = if tag == 1 { r.id() } else { 0UL }
   let thread_serial = match tag {
@@ -272,7 +291,14 @@ fn read_heap(r : Reader, summary : Summary) -> Unit raise ParseError {
 ///|
 /// Prototype for HotSpot JAVA PROFILE 1.0.2, with strict record boundaries.
 /// ponytail: retains the input and name tables; streaming/mmap is future work.
-pub fn parse(data : Bytes) -> Summary raise ParseError {
+pub fn parse(
+  data : Bytes,
+  limits? : ParseLimits = ParseLimits::new(),
+) -> Summary raise ParseError {
+  limits.validate()
+  if data.length() > limits.max_file_bytes {
+    raise Invalid(0, "input exceeds configured file limit")
+  }
   let r = Reader::{ data, pos: 0, end: data.length(), id_size: 4, }
   r.skip(19)
   if data[0:19].to_owned() != b"JAVA PROFILE 1.0.2\x00" {
@@ -302,10 +328,14 @@ pub fn parse(data : Bytes) -> Summary raise ParseError {
     threads: {},
     class_serials: {},
     record_counts: {},
+    limits,
   }
   let mut heap_seen = false
   let mut end_seen = false
+  let mut record_total = 0
   while r.pos < r.end {
+    check_limit(r.pos, "top-level records", record_total, limits.max_records)
+    record_total += 1
     let tag = r.u1()
     summary.record_counts[tag] = summary.record_counts.get(tag).unwrap_or(0) + 1
     r.skip(4)
@@ -315,7 +345,19 @@ pub fn parse(data : Bytes) -> Summary raise ParseError {
     let record = Reader::{ data, pos: start, end: r.pos, id_size, }
     match tag {
       1 => {
+        check_limit(
+          start,
+          "strings",
+          summary.strings.length(),
+          limits.max_strings,
+        )
         let id = record.id()
+        if id == 0UL {
+          raise Invalid(start, "null string ID")
+        }
+        if record.end - record.pos > limits.max_text_bytes {
+          raise Invalid(start, "string exceeds configured text limit")
+        }
         if summary.strings.contains(id) {
           raise Invalid(start, "duplicate string ID")
         }
@@ -356,6 +398,9 @@ pub fn parse(data : Bytes) -> Summary raise ParseError {
         let serial = record.number(4)
         let thread_serial = record.number(4)
         let count = record.length()
+        if count > limits.max_trace_frames {
+          raise Invalid(start, "trace frame limit exceeded")
+        }
         if count > (record.end - record.pos) / id_size {
           raise Invalid(start, "truncated stack trace")
         }
