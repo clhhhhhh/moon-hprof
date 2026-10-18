@@ -106,6 +106,15 @@ pub enum HistogramSort {
   Name
 }
 
+pub struct LoaderStatistics {
+  loader_id : UInt64
+  class_count : Int
+  instance_count : Int
+  array_count : Int
+  payload_bytes : Int64
+}
+pub fn LoaderStatistics::to_json(Self) -> Json
+
 pub struct MethodSignature {
   parameters : Array[String]
   return_type : String
@@ -221,6 +230,7 @@ pub fn Summary::instance_fields(Self, UInt64) -> Array[FieldValue] raise ParseEr
 pub fn Summary::instance_payload_size(Self, UInt64) -> Int raise ParseError
 pub fn Summary::java_string(Self, UInt64, utf16_little_endian~ : Bool, max_chars? : Int) -> String raise ParseError
 pub fn Summary::largest_objects(Self, limit? : Int) -> Array[ObjectInfo] raise ParseError
+pub fn Summary::loader_statistics(Self) -> Array[LoaderStatistics]
 pub fn Summary::object(Self, UInt64) -> ObjectInfo?
 pub fn Summary::object_count(Self) -> Int
 pub fn Summary::object_ids(Self, class_id? : UInt64, offset? : Int, limit? : Int) -> Array[UInt64] raise ParseError
