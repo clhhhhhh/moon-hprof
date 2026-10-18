@@ -1,0 +1,22 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - run: moon update
+      - run: moon check --target wasm --deny-warn
+      - run: moon build --target wasm --deny-warn
+      - run: moon test --target wasm --deny-warn
+      - name: Real JVM differential validation
+        shell: pwsh
+        run: ./validation/verify.ps1
