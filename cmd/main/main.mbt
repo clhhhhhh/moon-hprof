@@ -7,6 +7,16 @@ fn main {
       println(@lib.cli_help())
       return
     }
+    if args[1] == "diff" {
+      if args.length() != 4 {
+        fail("usage: moon-hprof diff <before.hprof> <after.hprof>")
+      }
+      let before = @lib.parse(@fs.read_file(args[2]).binary())
+      let after = @lib.parse(@fs.read_file(args[3]).binary())
+      let changes = @lib.compare_heaps(before, after)
+      println(Json::array(changes.map(row => row.to_json())).stringify())
+      return
+    }
     let commands = [
       "summary", "histogram", "object", "class", "roots", "stack", "refs", "check",
     ]

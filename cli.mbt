@@ -1,6 +1,7 @@
 ///|
 pub fn cli_help() -> String {
   "moon-hprof <summary|histogram|object|class|roots|stack|refs|check> <file.hprof> [id] [options]\n" +
+  "moon-hprof diff <before.hprof> <after.hprof> (class-name aggregate comparison)\n" +
   "  summary:   [--class internal/name] [--format text|json]\n" +
   "  histogram: [--prefix name] [--kind instance|object_array|primitive_array]\n" +
   "             [--sort count|payload|elements|name] [--format json|csv] [--offset N] [--limit N]\n" +
