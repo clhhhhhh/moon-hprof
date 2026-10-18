@@ -1,5 +1,17 @@
 # Project Agents.md Guide
 
+## Codex account-quota guard
+
+Before starting substantial work and between edit/test/commit phases, run
+`python .codex/quota_guard.py`. This checks the current Codex session's local
+account-limit telemetry (not context occupancy or cumulative token totals).
+If either reported window has used at least 50%, stop further project work
+and report the checkpoint. Exit code 50 means stop; exit code 2 means unknown
+and requires refreshing/confirming quota before further substantial work.
+Do not retry with another session, raise the threshold, or disable this gate
+unless the user changes this instruction. A running generation/tool cannot
+be interrupted by this script: it is a cooperative phase-boundary guard.
+
 This is a [MoonBit](https://docs.moonbitlang.com) project.
 
 You can browse and install extra skills here:

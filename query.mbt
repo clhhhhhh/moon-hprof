@@ -305,7 +305,7 @@ pub fn Summary::references(
 }
 
 ///|
-pub fn Summary::histogram(
+fn Summary::histogram_rows(
   self : Summary,
 ) -> Array[HistogramRow] raise ParseError {
   let rows : Map[String, HistogramRow] = Map([])
@@ -338,7 +338,14 @@ pub fn Summary::histogram(
       object.length.to_int64(),
     }
   }
-  let result = rows.values().to_array()
+  rows.values().to_array()
+}
+
+///|
+pub fn Summary::histogram(
+  self : Summary,
+) -> Array[HistogramRow] raise ParseError {
+  let result = self.histogram_rows()
   result.sort_by((a, b) => {
     let count = b.count.compare(a.count)
     if count != 0 {

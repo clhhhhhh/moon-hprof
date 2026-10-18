@@ -23,7 +23,7 @@ pub fn Summary::select_histogram(
     raise Invalid(0, "unknown histogram kind")
   }
   let rows = self
-    .histogram()
+    .histogram_rows()
     .filter(row => {
       row.name.has_prefix(prefix) && (kind == "" || kind == row.kind)
     })
@@ -159,6 +159,10 @@ pub fn Summary::largest_objects(
   self : Summary,
   limit? : Int = 20,
 ) -> Array[ObjectInfo] raise ParseError {
+  let end = page_end(0, limit, self.objects.length())
+  if end == 0 {
+    return []
+  }
   let rows = self.objects.values().to_array()
   rows.sort_by((a, b) => {
     let size = b.payload_bytes.compare(a.payload_bytes)
@@ -168,6 +172,5 @@ pub fn Summary::largest_objects(
       a.id.compare(b.id)
     }
   })
-  let end = page_end(0, limit, rows.length())
   rows[0:end].to_owned()
 }

@@ -17,6 +17,8 @@ jobs:
       - run: moon check --target wasm --deny-warn
       - run: moon build --target wasm --deny-warn
       - run: moon test --target wasm --deny-warn
+      - name: Quota checkpoint unit tests (synthetic telemetry only)
+        run: python -B -m unittest discover -s .codex -p 'test_*.py'
       - name: Real JVM differential validation
         shell: pwsh
         run: ./validation/verify.ps1
