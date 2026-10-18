@@ -37,7 +37,7 @@ moon run cmd/main --target wasm -- check path/to/heap.hprof
 | Java String | `java_string`，支持 char[]、Latin-1、compact UTF-16，字节顺序由调用者明确指定 |
 | 根引用与栈 | `roots`、`roots_for`、`stack_trace`、`roots` / `stack` 命令 |
 | 直接引用 | `references` / `refs`，返回字段或数组引用，不进行可达性或泄漏推断 |
-| 统计与比较 | `histogram`、`select_histogram`、`totals`、`largest_objects`、`compare_heaps` |
+| 统计与比较 | `histogram`、`select_histogram`、`totals`、`largest_objects`、`loader_statistics`、`compare_heaps` |
 | 导出 | JSON、RFC 4180 CSV；`diff` 比较两份转储 |
 | 校验 | `validate` / `check`，检查继承链、字段布局和元数据引用 |
 
@@ -81,7 +81,9 @@ moon run cmd/main --target wasm -- diff before.hprof after.hprof
 
 ## 当前验证边界
 
-66 个单元测试覆盖二进制边界、完整合成文件的所有截断前缀、重复/空 ID、类型解码、继承循环、字段遮蔽、数组、元数据、资源上限、Unicode、JSON/CSV、查询、CLI 和描述符。真实文件对照另在 CI 执行，不计入这个单元测试数量。
+78 个单元测试覆盖二进制边界、完整合成文件的所有截断前缀、重复/空 ID、数值位模式、类型解码、继承循环、字段遮蔽、数组、元数据、资源上限、类加载器统计、Unicode、JSON/CSV、查询、CLI 和描述符。真实文件对照另在 CI 执行，不计入这个单元测试数量。
+
+2026-10-18 的 Git 跟踪 `.mbt` 文件合计 4002 行：实现和可执行程序 2452 行，测试 1550 行。该统计包含注释及空行，不包含生成的 `.mbti` 接口文件、Java 验证代码或第三方源码；行数不代表生产成熟度。
 
 GitHub Actions 执行 WASM 目标的 check/build/test，然后在 Linux/JDK 21 上重新生成样本并运行独立对照与语义验证。工具链版本、输入来源、参考解析器版本和边界均可在仓库内追溯。
 
