@@ -20,6 +20,10 @@ pub fn encode_hprof_text(String) -> Bytes
 
 pub fn execute(Summary, Array[String]) -> String raise ParseError
 
+pub fn field_descriptor(String) -> String raise ParseError
+
+pub fn method_descriptor(String) -> MethodSignature raise ParseError
+
 pub fn parse(Bytes, limits? : ParseLimits) -> Summary raise ParseError
 
 pub fn parse_object_id(String) -> UInt64 raise ParseError
@@ -102,6 +106,13 @@ pub enum HistogramSort {
   Name
 }
 
+pub struct MethodSignature {
+  parameters : Array[String]
+  return_type : String
+  parameter_slots : Int
+}
+pub fn MethodSignature::display(Self) -> String
+
 pub struct ObjectInfo {
   id : UInt64
   kind : ObjectKind
@@ -150,6 +161,7 @@ pub struct ResolvedFrame {
   source_name : String
   line_number : Int
 }
+pub fn ResolvedFrame::readable_signature(Self) -> String raise ParseError
 pub fn ResolvedFrame::to_json(Self) -> Json
 
 pub struct RootInfo {
@@ -207,6 +219,7 @@ pub fn Summary::histogram_csv(Self) -> String raise ParseError
 pub fn Summary::histogram_json(Self) -> Json raise ParseError
 pub fn Summary::instance_fields(Self, UInt64) -> Array[FieldValue] raise ParseError
 pub fn Summary::instance_payload_size(Self, UInt64) -> Int raise ParseError
+pub fn Summary::java_string(Self, UInt64, utf16_little_endian~ : Bool, max_chars? : Int) -> String raise ParseError
 pub fn Summary::largest_objects(Self, limit? : Int) -> Array[ObjectInfo] raise ParseError
 pub fn Summary::object(Self, UInt64) -> ObjectInfo?
 pub fn Summary::object_count(Self) -> Int
