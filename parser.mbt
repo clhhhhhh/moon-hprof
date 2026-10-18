@@ -80,10 +80,17 @@ pub struct Summary {
   priv strings : Map[UInt64, String]
   priv class_names : Map[UInt64, UInt64]
   priv counts : Map[UInt64, Int]
-} derive(Debug)
-
-///|
-pub extend Summary with @moonbitlang/core/debug.Debug::{to_repr}
+  priv data : Bytes
+  timestamp_ms : UInt64
+  priv definitions : Map[UInt64, ClassInfo]
+  priv objects : Map[UInt64, ObjectInfo]
+  priv roots_data : Array[RootInfo]
+  priv frames : Map[UInt64, StackFrame]
+  priv traces : Map[UInt64, StackTrace]
+  priv threads : Map[UInt64, ThreadInfo]
+  priv class_serials : Map[UInt64, UInt64]
+  priv record_counts : Map[Int, Int]
+}
 
 ///|
 pub fn Summary::count_class(self : Summary, name : String) -> Int {
@@ -97,26 +104,85 @@ pub fn Summary::count_class(self : Summary, name : String) -> Int {
 }
 
 ///|
-fn read_class(r : Reader) -> Unit raise ParseError {
-  // class ID, stack serial, superclass/loader/signers/domain/two reserved IDs.
-  r.skip(r.id_size * 7 + 8)
+fn read_class(r : Reader, summary : Summary) -> Unit raise ParseError {
+  let id = r.id()
+  if id == 0UL ||
+    summary.definitions.contains(id) ||
+    summary.objects.contains(id) {
+    raise Invalid(r.pos, "duplicate or null class object ID")
+  }
+  let stack_serial = r.number(4)
+  let superclass_id = r.id()
+  let loader_id = r.id()
+  let signers_id = r.id()
+  let protection_domain_id = r.id()
+  r.skip(r.id_size * 2)
+  let instance_size = r.length()
+  let constant_values : Array[ConstantEntry] = []
   let constants = r.u2()
   for _ in 0..<constants {
-    r.skip(2)
+    let index = r.u2()
     let kind = r.u1()
-    r.skip(type_width(kind, r.id_size))
+    constant_values.push({ index, value: r.value(kind), })
   }
+  let static_values : Array[StaticField] = []
   let statics = r.u2()
   for _ in 0..<statics {
-    r.skip(r.id_size)
+    let name_id = r.id()
     let kind = r.u1()
-    r.skip(type_width(kind, r.id_size))
+    static_values.push({ name_id, value: r.value(kind), })
   }
+  let field_values : Array[FieldSpec] = []
   let fields = r.u2()
   for _ in 0..<fields {
-    r.skip(r.id_size)
-    ignore(type_width(r.u1(), r.id_size))
+    let name_id = r.id()
+    let kind = r.u1()
+    ignore(type_width(kind, r.id_size))
+    field_values.push({ name_id, kind, })
   }
+  summary.definitions[id] = {
+    id,
+    stack_serial,
+    superclass_id,
+    loader_id,
+    signers_id,
+    protection_domain_id,
+    instance_size,
+    constants: constant_values,
+    statics: static_values,
+    fields: field_values,
+  }
+}
+
+///|
+fn add_object(summary : Summary, object : ObjectInfo) -> Unit raise ParseError {
+  if object.id == 0UL ||
+    summary.objects.contains(object.id) ||
+    summary.definitions.contains(object.id) {
+    raise Invalid(object.payload_offset, "duplicate or null object ID")
+  }
+  summary.objects[object.id] = object
+}
+
+///|
+fn read_root(r : Reader, tag : Int, summary : Summary) -> Unit raise ParseError {
+  let object_id = r.id()
+  let related_id = if tag == 1 { r.id() } else { 0UL }
+  let thread_serial = match tag {
+    2 | 3 | 4 | 6 | 8 => r.number(4)
+    _ => 0UL
+  }
+  let frame_number = match tag {
+    2 | 3 | 8 => r.number(4)
+    _ => 0UL
+  }
+  summary.roots_data.push({
+    tag,
+    object_id,
+    related_id,
+    thread_serial,
+    frame_number,
+  })
 }
 
 ///|
@@ -125,34 +191,56 @@ fn read_heap(r : Reader, summary : Summary) -> Unit raise ParseError {
     let offset = r.pos
     let tag = r.u1()
     match tag {
-      0xff | 0x05 | 0x07 => r.skip(r.id_size)
-      0x01 => r.skip(r.id_size * 2)
-      0x02 | 0x03 | 0x08 => r.skip(r.id_size + 8)
-      0x04 | 0x06 => r.skip(r.id_size + 4)
+      0xff | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 => read_root(r, tag, summary)
       0x20 => {
-        read_class(r)
+        read_class(r, summary)
         summary.classes += 1
       }
       0x21 => {
-        r.skip(r.id_size + 4)
+        let id = r.id()
+        let stack_serial = r.number(4)
         let class_id = r.id()
         let length = r.length()
+        let payload_offset = r.pos
         r.skip(length)
+        add_object(summary, {
+          id,
+          kind: Instance,
+          class_id,
+          stack_serial,
+          primitive_kind: 0,
+          length: 0,
+          payload_offset,
+          payload_bytes: length,
+        })
         summary.instances += 1
         summary.counts[class_id] = summary.counts.get(class_id).unwrap_or(0) + 1
       }
       0x22 => {
-        r.skip(r.id_size + 4)
+        let id = r.id()
+        let stack_serial = r.number(4)
         let count = r.length()
-        r.skip(r.id_size)
+        let class_id = r.id()
         if count > (r.end - r.pos) / r.id_size {
           raise Invalid(offset, "truncated object array")
         }
+        let payload_offset = r.pos
         r.skip(count * r.id_size)
+        add_object(summary, {
+          id,
+          kind: ObjectArray,
+          class_id,
+          stack_serial,
+          primitive_kind: 2,
+          length: count,
+          payload_offset,
+          payload_bytes: count * r.id_size,
+        })
         summary.object_arrays += 1
       }
       0x23 => {
-        r.skip(r.id_size + 4)
+        let id = r.id()
+        let stack_serial = r.number(4)
         let count = r.length()
         let kind = r.u1()
         if kind == 2 {
@@ -162,7 +250,18 @@ fn read_heap(r : Reader, summary : Summary) -> Unit raise ParseError {
         if count > (r.end - r.pos) / width {
           raise Invalid(offset, "truncated primitive array")
         }
+        let payload_offset = r.pos
         r.skip(count * width)
+        add_object(summary, {
+          id,
+          kind: PrimitiveArray,
+          class_id: 0UL,
+          stack_serial,
+          primitive_kind: kind,
+          length: count,
+          payload_offset,
+          payload_bytes: count * width,
+        })
         summary.primitive_arrays += 1
       }
       _ => raise Invalid(offset, "unsupported heap subrecord: \{tag}")
@@ -183,7 +282,7 @@ pub fn parse(data : Bytes) -> Summary raise ParseError {
   if id_size != 4 && id_size != 8 {
     raise Invalid(19, "identifier width must be 4 or 8")
   }
-  r.skip(8)
+  let timestamp_ms = r.number(8)
   let summary = Summary::{
     id_size,
     classes: 0,
@@ -193,11 +292,22 @@ pub fn parse(data : Bytes) -> Summary raise ParseError {
     strings: {},
     class_names: {},
     counts: {},
+    data,
+    timestamp_ms,
+    definitions: {},
+    objects: {},
+    roots_data: [],
+    frames: {},
+    traces: {},
+    threads: {},
+    class_serials: {},
+    record_counts: {},
   }
   let mut heap_seen = false
   let mut end_seen = false
   while r.pos < r.end {
     let tag = r.u1()
+    summary.record_counts[tag] = summary.record_counts.get(tag).unwrap_or(0) + 1
     r.skip(4)
     let size = r.length()
     let start = r.pos
@@ -209,12 +319,67 @@ pub fn parse(data : Bytes) -> Summary raise ParseError {
         summary.strings[id] = @utf8.decode_lossy(data[record.pos:record.end])
       }
       2 => {
-        record.skip(4)
+        let serial = record.number(4)
         let class_id = record.id()
         record.skip(4)
         summary.class_names[class_id] = record.id()
+        summary.class_serials[serial] = class_id
         if record.pos != record.end {
           raise Invalid(start, "invalid LOAD_CLASS size")
+        }
+      }
+      4 => {
+        let id = record.id()
+        let method_name_id = record.id()
+        let signature_id = record.id()
+        let source_name_id = record.id()
+        let class_serial = record.number(4)
+        let line_number = record.number(4).to_int()
+        if record.pos != record.end || summary.frames.contains(id) {
+          raise Invalid(start, "invalid or duplicate stack frame")
+        }
+        summary.frames[id] = {
+          id,
+          method_name_id,
+          signature_id,
+          source_name_id,
+          class_serial,
+          line_number,
+        }
+      }
+      5 => {
+        let serial = record.number(4)
+        let thread_serial = record.number(4)
+        let count = record.length()
+        if count > (record.end - record.pos) / id_size {
+          raise Invalid(start, "truncated stack trace")
+        }
+        let frame_ids = []
+        for _ in 0..<count {
+          frame_ids.push(record.id())
+        }
+        if record.pos != record.end || summary.traces.contains(serial) {
+          raise Invalid(start, "invalid or duplicate stack trace")
+        }
+        summary.traces[serial] = { serial, thread_serial, frame_ids, }
+      }
+      0x0a => {
+        let serial = record.number(4)
+        let object_id = record.id()
+        let stack_serial = record.number(4)
+        let name_id = record.id()
+        let group_name_id = record.id()
+        let parent_group_name_id = record.id()
+        if record.pos != record.end || summary.threads.contains(serial) {
+          raise Invalid(start, "invalid or duplicate thread")
+        }
+        summary.threads[serial] = {
+          serial,
+          object_id,
+          stack_serial,
+          name_id,
+          group_name_id,
+          parent_group_name_id,
         }
       }
       0x0c | 0x1c => {

@@ -8,6 +8,8 @@ import {
 // Values
 pub fn parse(Bytes) -> Summary raise ParseError
 
+pub fn value_type_name(Int) -> String raise ParseError
+
 // Errors
 pub suberror ParseError {
   Invalid(Int, String)
@@ -15,16 +17,165 @@ pub suberror ParseError {
 pub fn ParseError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub struct ClassInfo {
+  id : UInt64
+  stack_serial : UInt64
+  superclass_id : UInt64
+  loader_id : UInt64
+  signers_id : UInt64
+  protection_domain_id : UInt64
+  instance_size : Int
+  constants : Array[ConstantEntry]
+  statics : Array[StaticField]
+  fields : Array[FieldSpec]
+}
+
+pub struct ConstantEntry {
+  index : Int
+  value : Value
+}
+
+pub struct FieldSpec {
+  name_id : UInt64
+  kind : Int
+}
+
+pub struct FieldValue {
+  declaring_class_id : UInt64
+  name : String
+  value : Value
+}
+
+pub struct HistogramRow {
+  name : String
+  class_id : UInt64
+  loader_id : UInt64
+  kind : String
+  count : Int
+  payload_bytes : Int64
+  elements : Int64
+}
+
+pub struct ObjectInfo {
+  id : UInt64
+  kind : ObjectKind
+  class_id : UInt64
+  stack_serial : UInt64
+  primitive_kind : Int
+  length : Int
+  payload_offset : Int
+  payload_bytes : Int
+}
+
+pub enum ObjectKind {
+  Instance
+  ObjectArray
+  PrimitiveArray
+} derive(Eq)
+pub fn ObjectKind::equal(Self, Self) -> Bool
+pub fn ObjectKind::label(Self) -> String
+pub fn ObjectKind::not_equal(Self, Self) -> Bool
+
+pub struct ReferenceEdge {
+  source_id : UInt64
+  target_id : UInt64
+  label : String
+}
+
+pub struct ResolvedFrame {
+  id : UInt64
+  class_name : String
+  method_name : String
+  signature : String
+  source_name : String
+  line_number : Int
+}
+
+pub struct RootInfo {
+  tag : Int
+  object_id : UInt64
+  related_id : UInt64
+  thread_serial : UInt64
+  frame_number : UInt64
+}
+pub fn RootInfo::label(Self) -> String
+
+pub struct StackFrame {
+  id : UInt64
+  method_name_id : UInt64
+  signature_id : UInt64
+  source_name_id : UInt64
+  class_serial : UInt64
+  line_number : Int
+}
+
+pub struct StackTrace {
+  serial : UInt64
+  thread_serial : UInt64
+  frame_ids : Array[UInt64]
+}
+
+pub struct StaticField {
+  name_id : UInt64
+  value : Value
+}
+
 pub struct Summary {
   id_size : Int
   mut classes : Int
   mut instances : Int
   mut object_arrays : Int
   mut primitive_arrays : Int
+  timestamp_ms : UInt64
   // private fields
-} derive(@debug.Debug)
+}
+pub fn Summary::array_values(Self, UInt64, offset? : Int, limit? : Int) -> Array[Value] raise ParseError
+pub fn Summary::class_ids(Self) -> Array[UInt64]
+pub fn Summary::class_info(Self, UInt64) -> ClassInfo?
+pub fn Summary::class_name(Self, UInt64) -> String?
+pub fn Summary::contains_object(Self, UInt64) -> Bool
 pub fn Summary::count_class(Self, String) -> Int
-pub fn Summary::to_repr(Self) -> @debug.Repr
+pub fn Summary::file_size(Self) -> Int
+pub fn Summary::find_classes(Self, String) -> Array[UInt64]
+pub fn Summary::hierarchy(Self, UInt64) -> Array[ClassInfo] raise ParseError
+pub fn Summary::histogram(Self) -> Array[HistogramRow] raise ParseError
+pub fn Summary::instance_fields(Self, UInt64) -> Array[FieldValue] raise ParseError
+pub fn Summary::object(Self, UInt64) -> ObjectInfo?
+pub fn Summary::object_count(Self) -> Int
+pub fn Summary::object_ids(Self, class_id? : UInt64, offset? : Int, limit? : Int) -> Array[UInt64] raise ParseError
+pub fn Summary::record_count(Self, Int) -> Int
+pub fn Summary::references(Self, UInt64, limit? : Int) -> Array[ReferenceEdge] raise ParseError
+pub fn Summary::root_count(Self) -> Int
+pub fn Summary::roots(Self, offset? : Int, limit? : Int) -> Array[RootInfo] raise ParseError
+pub fn Summary::stack_frame(Self, UInt64) -> ResolvedFrame?
+pub fn Summary::stack_trace(Self, UInt64) -> Array[ResolvedFrame] raise ParseError
+pub fn Summary::static_fields(Self, UInt64) -> Array[FieldValue] raise ParseError
+pub fn Summary::string(Self, UInt64) -> String?
+pub fn Summary::thread(Self, UInt64) -> ThreadInfo?
+
+pub struct ThreadInfo {
+  serial : UInt64
+  object_id : UInt64
+  stack_serial : UInt64
+  name_id : UInt64
+  group_name_id : UInt64
+  parent_group_name_id : UInt64
+}
+
+pub enum Value {
+  Reference(UInt64)
+  Boolean(Bool)
+  Character(Int)
+  ByteValue(Int)
+  ShortValue(Int)
+  IntValue(Int)
+  LongValue(Int64)
+  FloatValue(Double)
+  DoubleValue(Double)
+} derive(@debug.Debug)
+pub fn Value::kind(Self) -> Int
+pub fn Value::reference(Self) -> UInt64?
+pub fn Value::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 
