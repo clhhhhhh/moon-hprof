@@ -1,11 +1,12 @@
 ///|
 pub fn cli_help() -> String {
-  "moon-hprof <summary|histogram|object|class|roots|stack|refs|check> <file.hprof> [id] [options]\n" +
+  "moon-hprof <summary|histogram|objects|object|class|roots|stack|refs|check> <file.hprof> [id] [options]\n" +
   "moon-hprof diff <before.hprof> <after.hprof> (class-name aggregate comparison)\n" +
   "  summary:   [--class internal/name] [--format text|json]\n" +
   "  histogram: [--prefix name] [--kind instance|object_array|primitive_array]\n" +
   "             [--sort count|payload|elements|name] [--format json|csv] [--offset N] [--limit N]\n" +
   "  object:    <decimal-or-hex-id> [--offset N] [--limit N]\n" +
+  "  objects:   <class-id-or-0-for-all> [--offset N] [--limit N]\n" +
   "  class:     <decimal-or-hex-id>\n" +
   "  roots:     [--offset N] [--limit N]\n" +
   "  stack:     <trace-serial>\n" +
@@ -73,11 +74,14 @@ fn parse_cli(args : Array[String]) -> CliOptions raise ParseError {
   }
   let command = args[0]
   if ![
-      "summary", "histogram", "object", "class", "roots", "stack", "refs", "check",
+      "summary", "histogram", "objects", "object", "class", "roots", "stack", "refs",
+      "check",
     ].contains(command) {
     raise Invalid(0, "unknown command: \{command}")
   }
-  let needs_id = ["object", "class", "stack", "refs"].contains(command)
+  let needs_id = ["objects", "object", "class", "stack", "refs"].contains(
+    command,
+  )
   let id = if needs_id {
     if args.length() < 2 {
       raise Invalid(0, "missing object ID or trace serial")
@@ -119,10 +123,12 @@ fn parse_cli(args : Array[String]) -> CliOptions raise ParseError {
           "name" => Name
           _ => raise Invalid(i, "invalid histogram sort")
         }
-      "--offset" if ["histogram", "object", "roots"].contains(command) =>
-        offset = cli_int(value)
-      "--limit" if ["histogram", "object", "roots", "refs"].contains(command) =>
-        limit = cli_int(value)
+      "--offset" if ["histogram", "objects", "object", "roots"].contains(
+          command,
+        ) => offset = cli_int(value)
+      "--limit" if ["histogram", "objects", "object", "roots", "refs"].contains(
+          command,
+        ) => limit = cli_int(value)
       _ => raise Invalid(i, "option not supported for command: \{option}")
     }
     i += 2
@@ -203,6 +209,16 @@ pub fn execute(
         out.to_string()
       }
     }
+    "objects" =>
+      Json::array(
+        heap
+        .object_ids(
+          class_id=options.id,
+          offset=options.offset,
+          limit=options.limit,
+        )
+        .map(json_id),
+      ).stringify()
     "object" =>
       heap
       .object_json(options.id, offset=options.offset, limit=options.limit)

@@ -18,7 +18,8 @@ fn main {
       return
     }
     let commands = [
-      "summary", "histogram", "object", "class", "roots", "stack", "refs", "check",
+      "summary", "histogram", "objects", "object", "class", "roots", "stack", "refs",
+      "check",
     ]
     if commands.contains(args[1]) {
       if args.length() < 3 {

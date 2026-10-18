@@ -65,6 +65,11 @@ test "histogram CLI applies filtering before offset and limit" {
 ///|
 test "object class stack roots and reference commands use the library queries" {
   let heap = parse(sample_dump(8))
+  assert_eq(execute(heap, ["objects", "101"]), "[\"200\"]")
+  assert_eq(
+    execute(heap, ["objects", "0", "--offset", "2", "--limit", "1"]),
+    "[\"300\"]",
+  )
   assert_eq(
     execute(heap, ["object", "0xc8"]),
     heap.object_json(200UL).stringify(),
