@@ -316,7 +316,12 @@ pub fn parse(data : Bytes) -> Summary raise ParseError {
     match tag {
       1 => {
         let id = record.id()
-        summary.strings[id] = @utf8.decode_lossy(data[record.pos:record.end])
+        if summary.strings.contains(id) {
+          raise Invalid(start, "duplicate string ID")
+        }
+        summary.strings[id] = decode_hprof_text(
+          data[record.pos:record.end].to_owned(),
+        )
       }
       2 => {
         let serial = record.number(4)

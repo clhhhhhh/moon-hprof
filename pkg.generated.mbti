@@ -6,6 +6,14 @@ import {
 }
 
 // Values
+pub fn csv_cell(String) -> String
+
+pub fn decode_hprof_text(Bytes) -> String raise ParseError
+
+pub fn display_class_name(String) -> String
+
+pub fn encode_hprof_text(String) -> Bytes
+
 pub fn parse(Bytes) -> Summary raise ParseError
 
 pub fn value_type_name(Int) -> String raise ParseError
@@ -55,6 +63,7 @@ pub struct HistogramRow {
   payload_bytes : Int64
   elements : Int64
 }
+pub fn HistogramRow::to_json(Self) -> Json
 
 pub struct ObjectInfo {
   id : UInt64
@@ -81,6 +90,7 @@ pub struct ReferenceEdge {
   target_id : UInt64
   label : String
 }
+pub fn ReferenceEdge::to_json(Self) -> Json
 
 pub struct ResolvedFrame {
   id : UInt64
@@ -90,6 +100,7 @@ pub struct ResolvedFrame {
   source_name : String
   line_number : Int
 }
+pub fn ResolvedFrame::to_json(Self) -> Json
 
 pub struct RootInfo {
   tag : Int
@@ -99,6 +110,7 @@ pub struct RootInfo {
   frame_number : UInt64
 }
 pub fn RootInfo::label(Self) -> String
+pub fn RootInfo::to_json(Self) -> Json
 
 pub struct StackFrame {
   id : UInt64
@@ -132,6 +144,7 @@ pub struct Summary {
 pub fn Summary::array_values(Self, UInt64, offset? : Int, limit? : Int) -> Array[Value] raise ParseError
 pub fn Summary::class_ids(Self) -> Array[UInt64]
 pub fn Summary::class_info(Self, UInt64) -> ClassInfo?
+pub fn Summary::class_json(Self, UInt64) -> Json raise ParseError
 pub fn Summary::class_name(Self, UInt64) -> String?
 pub fn Summary::contains_object(Self, UInt64) -> Bool
 pub fn Summary::count_class(Self, String) -> Int
@@ -139,10 +152,13 @@ pub fn Summary::file_size(Self) -> Int
 pub fn Summary::find_classes(Self, String) -> Array[UInt64]
 pub fn Summary::hierarchy(Self, UInt64) -> Array[ClassInfo] raise ParseError
 pub fn Summary::histogram(Self) -> Array[HistogramRow] raise ParseError
+pub fn Summary::histogram_csv(Self) -> String raise ParseError
+pub fn Summary::histogram_json(Self) -> Json raise ParseError
 pub fn Summary::instance_fields(Self, UInt64) -> Array[FieldValue] raise ParseError
 pub fn Summary::object(Self, UInt64) -> ObjectInfo?
 pub fn Summary::object_count(Self) -> Int
 pub fn Summary::object_ids(Self, class_id? : UInt64, offset? : Int, limit? : Int) -> Array[UInt64] raise ParseError
+pub fn Summary::object_json(Self, UInt64, offset? : Int, limit? : Int) -> Json raise ParseError
 pub fn Summary::record_count(Self, Int) -> Int
 pub fn Summary::references(Self, UInt64, limit? : Int) -> Array[ReferenceEdge] raise ParseError
 pub fn Summary::root_count(Self) -> Int
@@ -151,6 +167,7 @@ pub fn Summary::stack_frame(Self, UInt64) -> ResolvedFrame?
 pub fn Summary::stack_trace(Self, UInt64) -> Array[ResolvedFrame] raise ParseError
 pub fn Summary::static_fields(Self, UInt64) -> Array[FieldValue] raise ParseError
 pub fn Summary::string(Self, UInt64) -> String?
+pub fn Summary::summary_json(Self) -> Json
 pub fn Summary::thread(Self, UInt64) -> ThreadInfo?
 
 pub struct ThreadInfo {
@@ -175,6 +192,7 @@ pub enum Value {
 } derive(@debug.Debug)
 pub fn Value::kind(Self) -> Int
 pub fn Value::reference(Self) -> UInt64?
+pub fn Value::to_json(Self) -> Json
 pub fn Value::to_repr(Self) -> @debug.Repr
 
 // Type aliases

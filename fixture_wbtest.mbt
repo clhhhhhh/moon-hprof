@@ -10,7 +10,7 @@ fn record(tag : Int, body : Bytes) -> Bytes {
 
 ///|
 fn string_record(id : UInt64, text : String, width : Int) -> Bytes {
-  record(1, be(id, width) + @utf8.encode(text))
+  record(1, be(id, width) + encode_hprof_text(text))
 }
 
 ///|
