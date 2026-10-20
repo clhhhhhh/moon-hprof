@@ -1,6 +1,5 @@
 ///|
-/// Reusable bidirectional index of field, static-field and array references.
-/// Weak/soft references are not classified: this is not a GC reachability graph.
+/// Reusable bidirectional index of recorded object references.
 pub struct ReferenceIndex {
   priv inbound : Map[UInt64, Array[ReferenceEdge]]
   priv outbound : Map[UInt64, Array[ReferenceEdge]]
@@ -58,6 +57,24 @@ pub fn ReferenceIndex::build(
   for id in ids {
     index.known_nodes[id] = true
     if heap.definitions.contains(id) {
+      let cls = heap.definitions[id]
+      index.add(id, cls.superclass_id, "superclass", max_edges, max_slots)
+      index.add(id, cls.loader_id, "class_loader", max_edges, max_slots)
+      index.add(id, cls.signers_id, "signers", max_edges, max_slots)
+      index.add(
+        id,
+        cls.protection_domain_id,
+        "protection_domain",
+        max_edges,
+        max_slots,
+      )
+      for constant in cls.constants {
+        if constant.value.reference() is Some(target) {
+          index.add(
+            id, target, "constant_pool[{constant.index}]", max_edges, max_slots,
+          )
+        }
+      }
       for field in heap.static_fields(id) {
         if field.value.reference() is Some(target) {
           index.add(id, target, field.name, max_edges, max_slots)
@@ -67,7 +84,8 @@ pub fn ReferenceIndex::build(
     }
     let object = heap.require_object(id)
     match object.kind {
-      Instance =>
+      Instance => {
+        index.add(id, object.class_id, "@class", max_edges, max_slots)
         for field in heap.instance_fields(id) {
           if field.value.reference() is Some(target) {
             // The declaring class distinguishes shadowed field names.
@@ -80,7 +98,9 @@ pub fn ReferenceIndex::build(
             )
           }
         }
+      }
       ObjectArray => {
+        index.add(id, object.class_id, "@class", max_edges, max_slots)
         if object.length > max_slots - index.slots {
           raise Invalid(
             object.payload_offset,

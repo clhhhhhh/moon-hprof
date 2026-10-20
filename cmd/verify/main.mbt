@@ -100,6 +100,13 @@ fn main {
     let path = index.path(keep, ids[0])
     assert_true(path.found && !path.truncated)
     assert_eq(path.edges.length(), 1)
+    let gc = heap.gc_analysis()
+    for id in ids {
+      assert_true(gc.is_reachable(id))
+    }
+    let root_path = gc.root_path(ids[0])
+    assert_true(heap.roots_for(root_path.root_id).length() > 0)
+    assert_eq(root_path.edges.last().map(edge => edge.target_id), Some(ids[0]))
     let preview = heap.preview(ids[0])
     assert_eq(preview.class_name, "GenerateHeap$Marker")
     assert_true(preview.text.contains("sequence="))

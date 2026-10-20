@@ -1,6 +1,6 @@
 ///|
 pub fn cli_help() -> String {
-  "moon-hprof <summary|histogram|objects|object|class|roots|stack|refs|inbound|referenced|preview|export|gc|check> <file.hprof> [id] [options]\n" +
+  "moon-hprof <summary|histogram|objects|object|class|roots|stack|refs|inbound|referenced|preview|export|gc|root-path|check> <file.hprof> [id] [options]\n" +
   "moon-hprof diff <before.hprof> <after.hprof> (class-name aggregate comparison)\n" +
   "  summary:   [--class internal/name] [--format text|json]\n" +
   "  histogram: [--prefix name] [--kind instance|object_array|primitive_array]\n" +
@@ -16,6 +16,7 @@ pub fn cli_help() -> String {
   "  preview:   <object-id> [--limit preview-items]\n" +
   "  export:    <class-id-or-0> [--offset N] [--limit N] (JSON Lines)\n" +
   "  gc:        [--limit N] (GC-root reachability, dominators and retained payload)\n" +
+  "  root-path: <object-id> (shortest strong path from a GC root)\n" +
   "  check:     validate class layouts and metadata\n" +
   "JSON IDs and 64-bit integers are decimal strings; payload sizes are file bytes."
 }
@@ -80,12 +81,13 @@ fn parse_cli(args : Array[String]) -> CliOptions raise ParseError {
   let command = args[0]
   if ![
       "summary", "histogram", "objects", "object", "class", "roots", "stack", "refs",
-      "check", "inbound", "preview", "export", "referenced", "gc",
+      "check", "inbound", "preview", "export", "referenced", "gc", "root-path",
     ].contains(command) {
     raise Invalid(0, "unknown command: \{command}")
   }
   let needs_id = [
     "objects", "object", "class", "stack", "refs", "inbound", "preview", "export",
+    "root-path",
   ].contains(command)
   let id = if needs_id {
     if args.length() < 2 {
@@ -261,6 +263,8 @@ pub fn execute(
     "preview" =>
       heap.preview(options.id, max_items=options.limit).to_json().stringify()
     "gc" => heap.gc_analysis().to_json(limit=options.limit).stringify()
+    "root-path" =>
+      heap.gc_analysis().root_path(options.id).to_json().stringify()
     "export" =>
       heap.objects_jsonl(
         class_id=options.id,

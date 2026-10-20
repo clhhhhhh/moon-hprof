@@ -21,7 +21,8 @@ Moon HProf 是一个使用 MoonBit 编写的 JVM HPROF 堆转储解析库和命�
 - 建立类、继承关系、字段、静态字段、对象、数组、线程栈和 GC 根的索引；
 - 提供对象字段解码、数组分页、Java String 解码、类统计和对象大小统计；
 - 提供直接引用、反向引用、引用排名和有预算的引用路径查询；
-- 提供从 GC Roots 出发的可达性分析、迭代支配关系计算和基于 HPROF payload 的 retained 结果；
+- 提供从 GC Roots 出发的可达性分析、迭代立即支配者计算和基于 HPROF payload 的 retained 结果；
+- 提供目标对象到 GC Root 的最短强引用路径，辅助定位对象由哪些引用链保持可达；
 - 提供输入资源限制、结构校验、重复 ID 检测和元数据引用检查；
 - 提供 JSON、CSV、JSON Lines 导出，以及摘要、直方图、对象预览和快照差异命令；
 - 提供 MoonBit 库 API 与 `moon run cmd/main` 命令行入口，并发布为 `clhhhhhh/moon-hprof@0.1.0`；
@@ -32,7 +33,7 @@ Moon HProf 是一个使用 MoonBit 编写的 JVM HPROF 堆转储解析库和命�
 
 项目采用 MoonBit 原生模块结构，按读取层、模型层、查询层、导出层和 CLI 层组织。交付物包括可通过 `moon add clhhhhhh/moon-hprof` 使用的 MoonCake 包、GitHub 源码仓库、README 使用示例、单元测试、真实 JVM 对照验证脚本和 CI 配置。
 
-项目当前聚焦 HPROF 解析、索引和可编程查询。GC 分析基于转储中明确记录的字段、静态字段和数组边；retained 结果按文件 payload 字节计算，不宣称等同于 JVM 实际分配量，也不替代 Eclipse MAT 的完整泄漏诊断。引用路径和索引结果会标注其边界与预算限制。
+项目当前聚焦 HPROF 解析、索引和可编程查询。GC 分析纳入对象字段、类静态与元数据引用以及对象到类对象的关系，并排除 Reference.referent 强遍历；retained 结果按文件 payload 字节计算，不宣称等同于 JVM 实际分配量，也不替代 Eclipse MAT 的完整泄漏诊断。SoftReference 内存压力语义与 VM 私有边仍受 HPROF 格式信息限制。
 
 ## 参考规范与许可
 

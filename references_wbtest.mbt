@@ -1,12 +1,16 @@
 ///|
 test "bidirectional index counts null slots but stores only non-null edges" {
   let index = ReferenceIndex::build(parse(sample_dump(8)))
-  assert_eq(index.slot_count(), 5)
-  assert_eq(index.edge_count(), 4)
+  assert_eq(index.slot_count(), 20)
+  assert_eq(index.edge_count(), 11)
   let inbound = index.incoming(201UL)
   assert_eq(inbound.map(edge => edge.source_id), [101UL, 200UL, 300UL])
   assert_eq(inbound[1].label, "101:ref")
-  assert_eq(index.outgoing(300UL).map(edge => edge.target_id), [200UL, 201UL])
+  assert_eq(index.outgoing(300UL).map(edge => edge.target_id), [
+    102UL, 200UL, 201UL,
+  ])
+  assert_eq(index.incoming(55UL)[0].label, "class_loader")
+  assert_eq(index.incoming(100UL)[0].source_id, 101UL)
   assert_eq(index.incoming(0UL).length(), 0)
   assert_eq(index.incoming(201UL, offset=1, limit=1)[0].source_id, 200UL)
 }
@@ -14,7 +18,7 @@ test "bidirectional index counts null slots but stores only non-null edges" {
 ///|
 test "index budgets fail explicitly instead of exposing partial data" {
   let heap = parse(sample_dump(4))
-  for limits in [(3, 5), (4, 4), (-1, 5), (4, -1)] {
+  for limits in [(10, 20), (11, 19), (-1, 20), (11, -1)] {
     try
       ReferenceIndex::build(heap, max_edges=limits.0, max_slots=limits.1)
     catch {
@@ -24,8 +28,8 @@ test "index budgets fail explicitly instead of exposing partial data" {
     }
   }
   assert_eq(
-    ReferenceIndex::build(heap, max_edges=4, max_slots=5).edge_count(),
-    4,
+    ReferenceIndex::build(heap, max_edges=11, max_slots=20).edge_count(),
+    11,
   )
   assert_eq(
     ReferenceIndex::build(parse(empty_dump(8)), max_edges=0, max_slots=0).edge_count(),
