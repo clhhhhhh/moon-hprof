@@ -1,6 +1,6 @@
 ///|
 pub fn cli_help() -> String {
-  "moon-hprof <summary|histogram|objects|object|class|roots|stack|refs|inbound|referenced|preview|export|check> <file.hprof> [id] [options]\n" +
+  "moon-hprof <summary|histogram|objects|object|class|roots|stack|refs|inbound|referenced|preview|export|gc|check> <file.hprof> [id] [options]\n" +
   "moon-hprof diff <before.hprof> <after.hprof> (class-name aggregate comparison)\n" +
   "  summary:   [--class internal/name] [--format text|json]\n" +
   "  histogram: [--prefix name] [--kind instance|object_array|primitive_array]\n" +
@@ -15,6 +15,7 @@ pub fn cli_help() -> String {
   "  referenced: [--limit N] (rank direct reference targets)\n" +
   "  preview:   <object-id> [--limit preview-items]\n" +
   "  export:    <class-id-or-0> [--offset N] [--limit N] (JSON Lines)\n" +
+  "  gc:        [--limit N] (GC-root reachability, dominators and retained payload)\n" +
   "  check:     validate class layouts and metadata\n" +
   "JSON IDs and 64-bit integers are decimal strings; payload sizes are file bytes."
 }
@@ -79,7 +80,7 @@ fn parse_cli(args : Array[String]) -> CliOptions raise ParseError {
   let command = args[0]
   if ![
       "summary", "histogram", "objects", "object", "class", "roots", "stack", "refs",
-      "check", "inbound", "preview", "export", "referenced",
+      "check", "inbound", "preview", "export", "referenced", "gc",
     ].contains(command) {
     raise Invalid(0, "unknown command: \{command}")
   }
@@ -132,7 +133,7 @@ fn parse_cli(args : Array[String]) -> CliOptions raise ParseError {
         ].contains(command) => offset = cli_int(value)
       "--limit" if [
           "histogram", "objects", "object", "roots", "refs", "inbound", "preview",
-          "export", "referenced",
+          "export", "referenced", "gc",
         ].contains(command) => limit = cli_int(value)
       _ => raise Invalid(i, "option not supported for command: \{option}")
     }
@@ -259,6 +260,7 @@ pub fn execute(
     }
     "preview" =>
       heap.preview(options.id, max_items=options.limit).to_json().stringify()
+    "gc" => heap.gc_analysis().to_json(limit=options.limit).stringify()
     "export" =>
       heap.objects_jsonl(
         class_id=options.id,

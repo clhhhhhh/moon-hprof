@@ -2,7 +2,7 @@
 
 MoonBit 编写的 HotSpot HPROF 堆转储解析库与命令行工具。支持类和对象索引、字段与数组查询、按类统计、JSON/CSV 导出、栈信息解析，以及两份转储的类统计比较。
 
-这是开发中的基础分析库，不是 Eclipse MAT 的完整替代品，不提供自动泄漏判断、支配树或保留堆大小计算。目前从源码运行，尚未发布到 Mooncakes。
+这是一个可通过源码或 MoonCake 使用的堆分析基础库，不是 Eclipse MAT 的完整替代品；提供基于 HPROF 显式引用的支配分析和 payload retained 统计，不提供自动泄漏判定或 JVM 实际 retained heap。MoonCake 已发布版本为 `clhhhhhh/moon-hprof@0.1.0`，最新 GC 分析功能可从仓库源码运行。
 
 项目采用 Apache-2.0。开发阶段使用 AI 辅助编程。
 
@@ -36,6 +36,7 @@ moon run cmd/main --target wasm -- check path/to/heap.hprof
 | 数组分页 | `array_values`，支持八种基本类型及对象引用数组 |
 | Java String | `java_string`，支持 char[]、Latin-1、compact UTF-16，字节顺序由调用者明确指定 |
 | 根引用与栈 | `roots`、`roots_for`、`stack_trace`、`roots` / `stack` 命令 |
+| 根可达性与支配分析 | `gc_analysis` API；CLI `gc` 输出可达对象、立即支配者和 retained payload |
 | 直接引用 | `references` / `refs`，返回字段或数组引用，不进行可达性或泄漏推断 |
 | 反向引用与路径 | `ReferenceIndex`、`incoming`、`referrer_ids`、`most_referenced`、有预算的 `path`；CLI `inbound` / `referenced` |
 | 内容预览与批量导出 | `preview`、`objects_jsonl`、`previews_jsonl`；CLI `preview` / `export` |
@@ -55,6 +56,7 @@ moon run cmd/main --target wasm -- diff before.hprof after.hprof
 moon run cmd/main --target wasm -- inbound heap.hprof 0x1234 --limit 20
 moon run cmd/main --target wasm -- preview heap.hprof 0x1234 --limit 8
 moon run cmd/main --target wasm -- export heap.hprof 0 --limit 100 > objects.jsonl
+moon run cmd/main --target wasm -- gc heap.hprof --limit 20
 ```
 
 其中 `0x1234` 是占位 ID，请替换成文件中的实际 ID。`--offset`、`--limit` 支持数组页面、根列表和对象列表，具体参数见 `--help`。
@@ -70,6 +72,7 @@ moon run cmd/main --target wasm -- export heap.hprof 0 --limit 100 > objects.jso
 - 输入完整加载到内存，再保存对象偏移和元数据索引；没有 mmap 或流式文件读取。默认文件上限 512 MiB、普通对象/数组上限 200 万、类上限 20 万，可通过 `ParseLimits` 调整；CLI 使用默认值。文件上限在读取后检查，不能替代调用者读取前的大小检查。
 - 查询页最多 100000 项；导出单个对象不会展开整个引用图。当前验证目标是 Windows/JDK 24 与 Ubuntu/JDK 21 的小型真实样本，不承诺大型转储性能或任意 JVM 兼容性。
 - `ReferenceIndex` 只索引实例字段、静态字段和对象数组，不包括 VM 隐式引用、类加载器元数据边，也不区分弱/软引用。路径只表示这些已记录边的连接，不是 GC 根路径、保留大小或泄漏证据。路径预算耗尽时 `truncated=true`，不会冒充“确定不存在路径”。
+- `gc_analysis` 在上述已记录边上从 GC Roots 做可达性遍历，并用迭代支配集合求解支配关系；`retained_payload` 是 HPROF 文件 payload 字节的支配子树累加，不等同于 JVM 实际 shallow heap 或完整 MAT retained heap。
 - 反向索引默认最多 100 万非空边、1000 万引用槽（包括空槽），超限明确报错。引用目标排行区分边数与不同源对象数，并标识指向堆中未定义对象的引用。
 - 对象预览只展示一层，省略项和字符裁剪会标记 `truncated`。JSON Lines 导出按对象分页，每行一个 JSON 文档；数组元素另有上限，不递归展开引用。
 
@@ -89,7 +92,7 @@ moon run cmd/main --target wasm -- export heap.hprof 0 --limit 100 > objects.jso
 
 ## 当前验证边界
 
-86 个单元测试覆盖二进制边界、完整合成文件的所有截断前缀、重复/空 ID、数值位模式、类型解码、继承循环、字段遮蔽、数组、元数据、资源上限、类加载器统计、Unicode、JSON/CSV/JSON Lines、正反向引用、循环路径与预算截断、对象预览、CLI 和描述符。真实文件对照另在 CI 执行，不计入这个单元测试数量。
+87 个单元测试覆盖二进制边界、完整合成文件的所有截断前缀、重复/空 ID、数值位模式、类型解码、继承循环、字段遮蔽、数组、元数据、资源上限、类加载器统计、Unicode、JSON/CSV/JSON Lines、正反向引用、循环路径与预算截断、对象预览、GC 支配与 retained 累加、CLI 和描述符。真实文件对照另在 CI 执行，不计入这个单元测试数量。
 
 2026-10-18 的 Git 跟踪 `.mbt` 文件合计 4735 行：实现和可执行程序 3025 行，测试 1710 行。该统计包含注释及空行，不包含生成的 `.mbti` 接口文件、Java 验证代码或第三方源码；行数不代表生产成熟度。
 

@@ -68,6 +68,18 @@ pub struct FieldValue {
   value : Value
 }
 
+pub struct GCAnalysis {
+  reachable : Array[UInt64]
+  unreachable_ids : Array[UInt64]
+  roots : Array[UInt64]
+  dominator : Map[UInt64, UInt64]
+  retained_payload : Map[UInt64, Int64]
+}
+pub fn GCAnalysis::dominator_of(Self, UInt64) -> UInt64?
+pub fn GCAnalysis::is_reachable(Self, UInt64) -> Bool
+pub fn GCAnalysis::retained_payload(Self, UInt64) -> Int64
+pub fn GCAnalysis::to_json(Self, limit? : Int) -> Json raise ParseError
+
 pub struct HeapTotals {
   class_objects : Int
   instance_objects : Int
@@ -262,6 +274,7 @@ pub fn Summary::count_class(Self, String) -> Int
 pub fn Summary::field(Self, UInt64, String, declaring_class? : UInt64) -> Value? raise ParseError
 pub fn Summary::file_size(Self) -> Int
 pub fn Summary::find_classes(Self, String) -> Array[UInt64]
+pub fn Summary::gc_analysis(Self, max_edges? : Int, max_slots? : Int) -> GCAnalysis raise ParseError
 pub fn Summary::hierarchy(Self, UInt64) -> Array[ClassInfo] raise ParseError
 pub fn Summary::histogram(Self) -> Array[HistogramRow] raise ParseError
 pub fn Summary::histogram_csv(Self) -> String raise ParseError
