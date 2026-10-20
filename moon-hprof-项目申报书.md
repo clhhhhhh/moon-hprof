@@ -25,7 +25,7 @@ Moon HProf 是一个使用 MoonBit 编写的 JVM HPROF 堆转储解析库和命�
 - 提供目标对象到 GC Root 的最短强引用路径，辅助定位对象由哪些引用链保持可达；
 - 提供输入资源限制、结构校验、重复 ID 检测和元数据引用检查；
 - 提供 JSON、CSV、JSON Lines 导出，以及摘要、直方图、对象预览和快照差异命令；
-- 提供 MoonBit 库 API 与 `moon run cmd/main` 命令行入口，并发布为 `clhhhhhh/moon-hprof@0.1.0`；
+- 提供 MoonBit 库 API 与 `moon run cmd/main` 命令行入口，并发布为 `clhhhhhh/moon-hprof@0.2.0`；
 - 提供 `gc` 命令，以 JSON 输出 GC Roots 可达对象、立即支配者和 retained payload 排名；
 - 通过合成 JVM 堆转储、独立 Java 参考解析器和 GitHub Actions 完成跨环境验证。
 

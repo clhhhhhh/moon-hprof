@@ -2,7 +2,7 @@
 
 MoonBit 编写的 HotSpot HPROF 堆转储解析库与命令行工具。支持类和对象索引、字段与数组查询、按类统计、JSON/CSV 导出、栈信息解析，以及两份转储的类统计比较。
 
-这是一个可通过源码或 MoonCake 使用的堆分析基础库，不是 Eclipse MAT 的完整替代品；提供基于 HPROF 显式引用的支配分析和 payload retained 统计，不提供自动泄漏判定或 JVM 实际 retained heap。MoonCake 已发布版本为 `clhhhhhh/moon-hprof@0.1.0`，最新 GC 分析功能可从仓库源码运行。
+这是一个可通过源码或 MoonCake 使用的堆分析基础库，不是 Eclipse MAT 的完整替代品；提供基于 HPROF 显式引用的支配分析和 payload retained 统计，不提供自动泄漏判定或 JVM 实际 retained heap。MoonCake 已发布版本为 `clhhhhhh/moon-hprof@0.2.0`，最新 GC 分析功能可从仓库源码运行。
 
 项目采用 Apache-2.0。开发阶段使用 AI 辅助编程。
 
